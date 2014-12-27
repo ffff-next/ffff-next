@@ -460,6 +460,11 @@ update_03_to_04()
 	uci commit freifunk
 }
 
+installcron()
+{
+	cat /lib/cron/* > /etc/crontabs/root
+}
+
 start()
 {
 	#Setup the system for the initial Freifunk configuration.
@@ -491,6 +496,8 @@ start()
 			echo "(E) Unknown version => Skip setup."
 			;;
 	esac
+
+	installcron
 
 	#disable and remove this script
 	/etc/init.d/freifunk_setup disable

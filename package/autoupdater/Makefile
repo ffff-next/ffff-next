@@ -29,6 +29,9 @@ endef
 define Package/autoupdater/install
 	$(CP) ./files/* $(1)/
 	chmod +x $(1)/usr/sbin/autoupdater
+	mkdir -p $(1)/lib/cron
+	echo "#check for new firmware once an hour" >> $(1)/lib/cron/${PKG_NAME}
+	echo "0 * * * * /usr/sbin/autoupdater" >> $(1)/lib/cron/${PKG_NAME}
 endef
 
 $(eval $(call BuildPackage,autoupdater))

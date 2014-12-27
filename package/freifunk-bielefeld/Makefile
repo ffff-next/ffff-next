@@ -26,7 +26,14 @@ define Build/Prepare
 endef
 
 define Package/freifunk-bielefeld-basic/install
-	#nothing to do here
+	$(CP) ./files/* $(1)/
+	mkdir -p $(1)/lib/cron
+	echo "#publish map data" >> $(1)/lib/cron/${PKG_NAME}
+	echo "*/5 * * * * /usr/sbin/print_map.sh -p" >> $(1)/lib/cron/${PKG_NAME}
+	echo "#publish service data" >> $(1)/lib/cron/${PKG_NAME}
+	echo "*/5 * * * * /usr/sbin/print_service.sh -p" >> $(1)/lib/cron/${PKG_NAME}
+	echo "#reboot every 5 days at 04:05" >> $(1)/lib/cron/${PKG_NAME}
+	echo "5 4 */5 * * /sbin/reboot" >> $(1)/lib/cron/${PKG_NAME}
 endef
 
 define Package/freifunk-bielefeld/conffiles
