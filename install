@@ -1,0 +1,157 @@
+#!/bin/bash
+
+#Small script to install ff-firmware to a plain openwrt repository as an "environment"
+#this script should only be called once. After that normal git operations on the ff-firmware
+#dir "env" and the openwrt package should be used.
+#However if you delete .config and files/ by yourself you can just rerun the script.
+#You have to do this manually to prevent this script to throw away your work!
+
+FFBASE=$1
+OWBASE="./"
+
+FFFEEDNAME=FreiFunk
+
+#Should the git repos be reset to their FETCH_HEAD?
+#"yes" is the default because custom patches should be kept in FFBASE anyway
+#and "yes" makes this script reappliable
+RESETFETCHHEAD=yes
+
+patchDirToGit(){
+  local PATCHDIR=$1
+  local GITCO=$2
+  if [[ -z $PATCHDIR || -z $GITCO ]] ; then
+    echo PATCHDIR and GITCO needed!
+    return 1
+  fi
+  local MYGIT="git -C $GITCO"
+  if [[ $RESETFETCHHEAD == "yes" ]]; then
+    echo Resetting $GITCO to last fetched version
+    $MYGIT reset --hard FETCH_HEAD
+    echo
+  fi
+  for PATCH in $(ls $PATCHDIR/*.patch) ; do
+    echo Test applying $PATCH to $GITCO
+    if  $MYGIT apply --check --whitespace=nowarn $PATCH ; then
+      echo Actually applying patch
+      if $MYGIT am --whitespace=nowarn $PATCH ; then
+        echo Success!
+      else
+        echo this should never happen...
+        exit 1
+      fi
+    else
+      echo Applying $PATCH failed!
+      FAILEDPATCHES="${FAILEDPATCHES}Failed applying\n$PATCH\nto\n$GITCO\n"
+      FAILEDPATCHES="${FAILEDPATCHES}\nTry calling \"git -C $GITCO am $PATCH\" manually. git will tell you more!\n\n"
+      echo Has it already been applied?
+    fi
+  echo
+done
+echo Patching $GITCO done
+echo
+}
+
+
+OWBASE=$(realpath $OWBASE)
+echo Using OpenWRT base: $OWBASE
+echo
+#this is a very weak check for openwrt base...
+if [[ ! -d $OWBASE &&  ! -f $OWBASE/feeds.config.default ]] ; then
+  echo This script has to be called from a openWRT buildroot
+  exit 1
+fi
+
+#if FFBASE is not given on commandline use the one this script is located
+if [[ -z $FFBASE ]] ; then
+  FFBASE=$(dirname $0)
+fi
+
+FFBASE=$(realpath $FFBASE)
+echo Using FreiFunk base: $FFBASE
+echo
+if [[ -z $FFBASE || ! -d $FFBASE || ! -f $FFBASE/.config || ! -d $FFBASE/files || ! -d $FFBASE/package  ]] ; then
+  echo We need a working copy of the firmware repository as a single argument
+  exit 1
+fi
+
+FEEDSCRIPT=$OWBASE/scripts/feeds
+
+if [[ -e $OWBASE/.config || -e $OWBASE/files ]] ; then
+  
+  if [[ -L $OWBASE/.config && -L $OWBASE/files ]] ; then
+    #we won't delet things, so we can go on
+    echo this will alter the symlinks $OWBASE/.config and $OWBASE/files
+  else
+    echo $OWBASE is not clean!
+    echo .config and files would be overridden!
+    exit 1
+  fi
+fi
+#from here we assume a clean openWRT build root
+
+
+if [[ -f feeds.conf ]] ; then
+  if ! grep $FFFEEDNAME $OWBASE/feeds.conf ; then
+    echo Adding FreiFunk packages to package feeds.conf
+    echo src-link  $FFFEEDNAME $FFBASE/packages >> $OWBASE/feeds.conf
+  else
+    echo FreiFunk packages already installed
+    echo
+  fi
+else
+  echo Using default feeds.config
+  cp $OWBASE/feeds.conf.default $OWBASE/feeds.conf
+  echo src-link $FFFEEDNAME $FFBASE/packages >> $OWBASE/feeds.conf
+fi
+echo Patching openwrt
+echo
+patchDirToGit $FFBASE/patches/openwrt/ $OWBASE $OWBASE
+
+echo Updating all packages
+echo
+
+$FEEDSCRIPT update -a
+
+echo Patching upstream packages with FF-Packages
+echo
+
+echo Patching openwrt routing feed
+echo
+patchDirToGit $FFBASE/patches/routing/ $OWBASE/feeds/routing/
+
+echo Patching openwrt packages feed
+echo
+patchDirToGit $FFBASE/patches/packages/ $OWBASE/feeds/packages/
+
+if [[ -n $FAILEDPATCHES ]] ; then
+  echo Unfortunatly applying these patches failed:
+  echo -e $FAILEDPATCHES
+  echo Please examine them and fix them.
+  echo Thanks
+fi
+
+$FEEDSCRIPT install -a
+
+#we have to link this after upgrading and installing because $FEEDSCRIPT will
+#interfere with .config and dnsmasq will be installed :-(
+echo Linking FF config
+rm $OWBASE/.config
+ln -s $FFBASE/.config $OWBASE/
+
+echo Linking FF base files
+echo
+rm -rf $OWBASE/files
+ln -s $FFBASE/files $OWBASE/files
+
+echo
+echo From here you should configure openwrt for the target device:
+echo
+echo make defconfig
+echo make menuconfig
+echo
+echo Build it:
+echo
+echo make -j$(getconf _NPROCESSORS_ONLN)
+echo
+echo Have fun!
+
