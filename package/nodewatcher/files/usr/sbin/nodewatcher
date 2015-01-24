@@ -10,7 +10,6 @@ if [ -f /etc/config/nodewatcher ];then
 	SCRIPT_ERROR_LEVEL=`uci get nodewatcher.@script[0].error_level`
 	SCRIPT_LOGFILE=`uci get nodewatcher.@script[0].logfile`
 	SCRIPT_DATA_FILE=`uci get nodewatcher.@script[0].data_file`
-	MESH_INTERFACE=`uci get nodewatcher.@network[0].mesh_interface`
 	CLIENT_INTERFACES=`uci get nodewatcher.@network[0].client_interfaces`
 else
 	. `dirname $0`/nodewatcher_config
@@ -81,7 +80,7 @@ crawl() {
     #FIRMWARE_REVISION="build date: Di 29. Jan 19:33:34 CET 2013"
     #OPENWRT_CORE_REVISION="35298"
     #OPENWRT_FEEDS_PACKAGES_REVISION="35298"
-	. /etc/firmware_release
+	#. /etc/firmware_release
 	SYSTEM_DATA="<status>online</status><hostname>$hostname</hostname><distname>$distname</distname><distversion>$distversion</distversion>$cpu$memory$load$uptime<local_time>$local_time</local_time><batman_advanced_version>$batman_adv_version</batman_advanced_version><kernel_version>$kernel_version</kernel_version><fastd_version>$fastd_version</fastd_version><nodewatcher_version>$nodewatcher_version</nodewatcher_version><firmware_version>$FIRMWARE_VERSION</firmware_version><firmware_revision>$FIRMWARE_REVISION</firmware_revision><openwrt_core_revision>$OPENWRT_CORE_REVISION</openwrt_core_revision><openwrt_feeds_packages_revision>$OPENWRT_FEEDS_PACKAGES_REVISION</openwrt_feeds_packages_revision>"
 
     err "`date`: Collecting information from network interfaces"
@@ -187,13 +186,8 @@ crawl() {
     fi
     err "`date`: Collecting information about conected clients"
 	#CLIENTS
-    SEDDEV=$(brctl showstp $MESH_INTERFACE | awk '/\([0-9]\)/ {
-            sub("\\(", "", $0)
-            sub("\\)", "", $0)
-            print "s/^  "$2"/"$1"/;"
-        }')
 
-    client_count=$(brctl showmacs $MESH_INTERFACE | sed -e "$SEDDEV" | egrep -c "(${CLIENT_INTERFACES// /|}).*no")
+    client_count=$(batctl tl | tail -n+3 | grep -v -e "^[ ]*\*" | wc -l)
 
     err "`date`: Putting all information into a XML-File and save it at "$SCRIPT_DATA_FILE
 
