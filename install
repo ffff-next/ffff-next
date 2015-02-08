@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# Copyright (C) 2015 Tobias Klaus - All Rights Reserved
+# Permission to copy and modify is granted under the GPL license
+
 #Small script to install ff-firmware to a plain openwrt repository as an "environment"
 #this script should only be called once. After that normal git operations on the ff-firmware
 #dir "env" and the openwrt package should be used.
