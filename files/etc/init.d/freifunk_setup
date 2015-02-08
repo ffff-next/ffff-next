@@ -4,24 +4,6 @@
 
 START=99
 
-#create an IPv6 ULA-address based on EUI-64
-ula_addr() {
-	local PREFIX6="$(uci get network.globals.ula_prefix)"
-	local mac=$1
-
-	# translate to local administered mac
-	a=${mac%%:*} #cut out first hex
-	a=$((0x$a ^ 2)) #invert second least significant bit
-	a=`printf '%02x\n' $a` #convert back to hex
-	mac="$a:${mac#*:}" #reassemble mac
-
-	mac=${mac//:/} # remove ':'
-	mac=${mac:0:6}fffe${mac:6:6} # insert ffee
-	mac=`echo $mac | sed 's/..../&:/g'` # insert ':'
-
-	# assemble IPv6 address
-	echo "${PREFIX6%%::*}:${mac%?}"
-}
 
 initial_wifi_setup()
 {
@@ -90,9 +72,9 @@ initial_wifi_setup()
 		add_ap_interface() {
 			p=wireless.`uci add wireless wifi-iface`
 			uci set $p.device="$wifi_device"
-			uci set $p.ifname="${wifi_device}_public"
+			uci set $p.ifname="${wifi_device}_freifunk"
 			uci set $p.mode=ap
-			uci set $p.network=public
+			uci set $p.network=freifunk
 			uci set $p.ssid="$ap_ssid"
 			uci set $p.encryption="none"
 		}
@@ -105,7 +87,7 @@ initial_wifi_setup()
 
 		check_wifi_interfaces() {
 			ip addr list dev "${wifi_device}_mesh" &> /dev/null && ah_ok=1 || ah_ok=0
-			ip addr list dev "${wifi_device}_public" &> /dev/null && ap_ok=1 || ap_ok=0
+			ip addr list dev "${wifi_device}_freifunk" &> /dev/null && ap_ok=1 || ap_ok=0
 		}
 
 		add_ah_interface
@@ -134,54 +116,54 @@ initial_wifi_setup()
 	config_foreach config_wifi wifi-device
 }
 
-initial_private_setup()
+initial_lan_setup()
 {
-	local private_interfaces="$1"
-	echo "(I) Setup private network interfaces."
+	local lan_interfaces="$1"
+	echo "(I) Setup lan network."
 
 	uci delete -q network.lan
-	uci delete -q network.private
-	uci set network.private="interface"
-	uci set network.private.type="bridge"
-	uci set network.private.ifname="$private_interfaces"
-	uci set network.private.ipaddr="192.168.133.1"
-	uci delete -q network.private.ip6addr
-	uci set network.private.proto=static
-	uci set network.private.netmask="255.255.255.0"
-	uci set network.private.igmp_snooping="0"
-	uci set network.private.force_link="1"
-	uci set network.private.bridge_empty="1"
+	uci set network.lan="interface"
+	uci set network.lan.type="bridge"
+	uci set network.lan.ifname="$lan_interfaces"
+	uci set network.lan.ipaddr="192.168.133.1"
+	uci delete -q network.lan.ip6addr
+	uci set network.lan.proto=static
+	uci set network.lan.netmask="255.255.255.0"
+	uci set network.lan.igmp_snooping="0"
+	uci set network.lan.force_link="1"
+	uci set network.lan.bridge_empty="1"
 }
 
-initial_public_setup()
+initial_freifunk_setup()
 {
-	local public_interfaces="$1" mac="$2"
-	echo "(I) Setup public interfaces."
+	local freifunk_interfaces="$1" mac="$2"
 
-	uci delete -q network.public
-	uci set network.public="interface"
-	uci set network.public.type="bridge"
-	uci set network.public.ifname="$public_interfaces"
-	uci set network.public.ipaddr="192.168.132.1"
-	uci set network.public.macaddr="$mac"
-	uci delete -q network.public.ip6addr
-	uci add_list network.public.ip6addr="$(ula_addr $mac)/64"
-	uci set network.public.proto=static
-	uci set network.public.netmask="255.255.255.0"
-	uci set network.public.igmp_snooping="0"
-	uci set network.public.force_link="1"
-	uci set network.public.bridge_empty="1"
+	echo "(I) Setup freifunk network."
 
-	uci set network.public6="interface"
-	uci set network.public6.ifname="@public"
-	uci set network.public6.peerdns="0"
-	uci set network.public6.proto="dhcpv6"
+	uci delete -q network.freifunk
+	uci set network.freifunk="interface"
+	uci set network.freifunk.type="bridge"
+	uci set network.freifunk.ifname="$freifunk_interfaces"
+	uci set network.freifunk.ipaddr="192.168.132.1"
+	uci set network.freifunk.macaddr="$mac"
+	uci delete -q network.freifunk.ip6addr
+	uci set network.freifunk.proto=static
+	uci set network.freifunk.netmask="255.255.255.0"
+	uci set network.freifunk.igmp_snooping="0"
+	uci set network.freifunk.force_link="1"
+	uci set network.freifunk.bridge_empty="1"
+
+	uci set network.freifunk6="interface"
+	uci set network.freifunk6.ifname="@freifunk"
+	uci set network.freifunk6.peerdns="0"
+	uci set network.freifunk6.proto="dhcpv6"
+
 }
 
 initial_wan_setup()
 {
 	local wan_interfaces="$1"
-	echo "(I) Setup WAN interfaces."
+	echo "(I) Setup WAN network."
 
 	uci -q delete network.wan
 	uci -q delete network.wan6
@@ -195,17 +177,34 @@ initial_wan_setup()
 	uci set network.wan6="interface"
 	uci set network.wan6.ifname="@wan"
 	uci set network.wan6.proto="dhcpv6"
+	#add the default route for wan to table 1
+	uci set network.wan6.ip6table="1"
+
+	#use table 1 also for all traffic marked by mark 1 (fastd)
+	uci set network.wan6_lookup="rule6"
+	uci set network.wan6_lookup.mark="0x01/0x01"
+	uci set network.wan6_lookup.lookup="1"
+
+	uci set network.wan6_unreachable="route6"
+	uci set network.wan6_unreachable.type="unreachable"
+	uci set network.wan6_unreachable.table="1"
+	uci set network.wan6_unreachable.target="::/0"
+	uci set network.wan6_unreachable.metric="65535"
+	uci set network.wan6_unreachable.gateway="::"
+	uci set network.wan6_unreachable.interface="loopback"
+
 }
 
 initial_setup()
 {
 	local version="$1"
+	local prefix="fdef:17a0:ffb1:300::/64"
 
 	local wan_interface=$(uci get -q network.wan.ifname)
 	echo "(I) WAN interface: '$wan_interface'"
 
-	local private_interface=$(uci get -q network.lan.ifname)
-	echo "(I) Private interface: '$private_interface'"
+	local lan_interface=$(uci get -q network.lan.ifname)
+	echo "(I) LAN interface: '$lan_interface'"
 
 	local ah_ssid="mesh_v"`dmesg | sed -n -r "s/.*compatibility version ([0-9]+).*/\1/p"`
 	echo "(I) AdHoc SSID: '$ah_ssid'"
@@ -227,10 +226,10 @@ initial_setup()
 	echo "(I) MAC: '$mac'"
 
 	echo "(I) Set Prefix and populate /etc/hosts."
+
 	uci set -q network.globals="globals"
-	uci set network.globals.ula_prefix="fdef:17a0:ffb1:300::/64"
+	uci set network.globals.ula_prefix="$prefix"
 	echo "192.168.132.1 node" >> /etc/hosts
-	echo "$(ula_addr $mac) node" >> /etc/hosts
 
 	# ------------------------------------- #
 	# F R E I F U N K  S E T U P #
@@ -249,13 +248,13 @@ initial_setup()
 	# P R I V A T E  S E T U P #
 	# ------------------------------------- #
 
-	initial_private_setup "$private_interface"
+	initial_lan_setup "$lan_interface"
 
 	# ------------------------------------- #
 	# P U B L I C  S E T U P #
 	# ------------------------------------- #
 
-	initial_public_setup "bat0" "$mac"
+	initial_freifunk_setup "bat0" "$mac"
 
 	# ------------------------------------- #
 	# W A N  S E T U P #
@@ -278,9 +277,9 @@ initial_setup()
 	#save defaults for use in the web-ui
 	cp /etc/config/network /etc/config/network_defaults
 
-	echo -e "\n#disable forwarding in roder for router-solicitations to be send for these interfaces" >> /etc/sysctl.conf
-	echo "net.ipv6.conf.br-public.forwarding=0" >> /etc/sysctl.conf
-	echo "net.ipv6.conf.br-private.forwarding=0" >> /etc/sysctl.conf
+	echo -e "\n#disable forwarding in order for router-solicitations to be set for these interfaces" >> /etc/sysctl.conf
+	echo "net.ipv6.conf.br-freifunk.forwarding=0" >> /etc/sysctl.conf
+	echo "net.ipv6.conf.br-lan.forwarding=0" >> /etc/sysctl.conf
 
 	echo "(I) Generate a key for fastd."
 	local secret=`fastd --generate-key --machine-readable`
@@ -296,10 +295,13 @@ initial_setup()
 
 update_03_to_04()
 {
+	local prefix="fdef:17a0:ffb1:300::/64"
+
 	echo "(I) Copy/delete some files."
 	cp /rom/etc/config/autoupdater /etc/config/
 	cp /rom/etc/config/dhcp /etc/config/
 	cp /rom/etc/config/firewall /etc/config/
+	cp /rom/etc/config/uhttpd /etc/config/
 	cp /rom/etc/config/batman-adv /etc/config/
 	cp /rom/etc/crontabs/root /etc/crontabs/
 	cp /rom/etc/firewall.user /etc/
@@ -328,14 +330,13 @@ update_03_to_04()
 
 	echo "(I) Set Prefix and populate /etc/hosts."
 	uci set -q network.globals="globals"
-	uci set network.globals.ula_prefix="fdef:17a0:ffb1:300::/64"
+	uci set network.globals.ula_prefix="$prefix"
 	echo "192.168.132.1 node" >> /etc/hosts
-	echo "$(ula_addr $mac) node" >> /etc/hosts
 
-	echo "(I) Disable forwarding on br-public/br-private."
+	echo "(I) Disable forwarding on br-freifunk/br-lan."
 	echo -e "\n#disable forwarding in roder for router-solicitations to be send for these interfaces" >> /etc/sysctl.conf
-	echo "net.ipv6.conf.br-public.forwarding=0" >> /etc/sysctl.conf
-	echo "net.ipv6.conf.br-private.forwarding=0" >> /etc/sysctl.conf
+	echo "net.ipv6.conf.br-freifunk.forwarding=0" >> /etc/sysctl.conf
+	echo "net.ipv6.conf.br-lan.forwarding=0" >> /etc/sysctl.conf
 
 	echo "(I) Remove dummy interfaces."
 	uci delete -q network.dummy_mesh
@@ -344,13 +345,17 @@ update_03_to_04()
 
 	echo "(I) Rebuild public/private/wan sections."
 	local ifname=$(uci get -q network.public.ifname)
-	initial_public_setup "${ifname/dummy_public/}" "$mac"
+	initial_freifunk_setup "${ifname/dummy_public/}" "$mac"
 
 	local ifname=$(uci get -q network.private.ifname)
-	initial_private_setup "${ifname/dummy_private/}"
+	initial_lan_setup "${ifname/dummy_private/}"
 
 	local ifname=$(uci get -q network.wan.ifname)
 	initial_wan_setup "$ifname"
+
+	echo "(I) Remove old private/public sections."
+	uci delete -q network.private
+	uci delete -q network.public
 
 	wireless_fixup_device() {
 		local cfg="$1" type hwmode
@@ -379,14 +384,14 @@ update_03_to_04()
 			uci delete -q network.$ifname.ifname
 		fi
 
-		pif="$(uci get network.public.ifname)"
+		pif="$(uci get network.freifunk.ifname)"
 		if [ "$pif" != "${pif/$ifname/}" ]; then
-			uci set network.public.ifname="${pif/$ifname/}"
+			uci set network.freifunk.ifname="${pif/$ifname/}"
 		fi
 
-		pif="$(uci get network.private.ifname)"
+		pif="$(uci get network.lan.ifname)"
 		if [ "$pif" != "${pif/$ifname/}" ]; then
-			uci set network.private.ifname="${pif/$ifname/}"
+			uci set network.lan.ifname="${pif/$ifname/}"
 		fi
 	}
 
@@ -443,6 +448,9 @@ update_03_to_04()
 	local hostname="$(uci get system.@system[0].hostname)"
 	local access_from="$(uci get freifunk.@settings[0].config_nets)"
 	local default_ap_ssid="$(uci get freifunk.@settings[0].default_ap_ssid)"
+
+	access_from="${access_from/private/lan}"
+	access_from="${access_from/public/freifunk}"
 
 	cp /rom/etc/config/freifunk /etc/config/
 	cp /rom/etc/config/system /etc/config/
