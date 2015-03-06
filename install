@@ -96,11 +96,11 @@ if [[ -e $OWBASE/.config || -e $OWBASE/files ]] ; then
 fi
 #from here we assume a clean openWRT build root
 
-
+FFPACKAGEDIR=$FFBASE/package
 if [[ -f feeds.conf ]] ; then
   if ! grep $FFFEEDNAME $OWBASE/feeds.conf ; then
     echo Adding FreiFunk packages to package feeds.conf
-    echo src-link  $FFFEEDNAME $FFBASE/packages >> $OWBASE/feeds.conf
+    echo src-link  $FFFEEDNAME $FFPACKAGEDIR >> $OWBASE/feeds.conf
   else
     echo FreiFunk packages already installed
     echo
@@ -108,7 +108,7 @@ if [[ -f feeds.conf ]] ; then
 else
   echo Using default feeds.config
   cp $OWBASE/feeds.conf.default $OWBASE/feeds.conf
-  echo src-link $FFFEEDNAME $FFBASE/packages >> $OWBASE/feeds.conf
+  echo src-link $FFFEEDNAME $FFPACKAGEDIR >> $OWBASE/feeds.conf
 fi
 
 echo Patching openwrt
