@@ -5,7 +5,7 @@ The GUI code displayes and manipulated this variable.
 */
 var uci = {};
 var gid = 0;
-var net_options = [["LAN", "lan"], ["Freifunk", "freifunk"], ["Mesh", "mesh"], ["WAN", "wan"]];
+var net_options = [["LAN", "lan"], ["Freifunk", "freifunk"], ["Mesh", "mesh"], ["WAN", "wan"], ["None", "none"]];
 
 function init()
 {
@@ -67,12 +67,20 @@ function appendSetting(p, path, value, mode)
 			b.lastChild.disabled = "disabled";
 		addHelpText(b, "Der Kanal auf dem die WLAN-Karte sendet. Bitte denk daran, dass sich Router nicht sehen k\xf6nnen wenn beide Seiten auf unterschiedlichen Kan\xe4len funken. Der erste Kanal ist daher zu empfehlen.");
 		break;
+	case "mode":
+		if(!inArray(mode, ["wan", "none"]))
+			return;
+		b = append_selection(p, "Modus", id, value, [["Client", "sta"],["AccessPoint", "ap"]]);
+		addHelpText(b, "In einem anderen Netz anmelden (Client) oder das Anmelden anderer Ger\xe4te zulassen (AccessPoint).");
+		break;
 	case "encryption":
-		if(mode == "freifunk" || mode == "mesh")
-			return
+		if(!inArray(mode, ["wan", "lan", "none"]))
+			return;
 		b = append_selection(p, "Verschl\xfcsselung", id, value, [["Keine", "none"],["WPA", "psk"], ["WPA2", "psk2"]]);
 		break;
 	case "key":
+		if(!inArray(mode, ["wan", "lan", "none"]))
+			return;
 		b = append_input(p, "Passwort", id, value);
 		addInputCheck(b.lastChild, /^[\S]{8,32}$/, "Bitte nur ein Passwort aus mindestens acht sichbaren Zeichen verwenden.");
 		break;
@@ -81,9 +89,8 @@ function appendSetting(p, path, value, mode)
 		break;
 	case "ssid":
 		b = append_input(p, "SSID", id, value);
-		if(mode == "freifunk" || mode == "mesh")
-			if(!adv_mode)
-				b.lastChild.disabled = "disabled";
+		if(!inArray(mode, ["wan", "lan", "none"]) && !adv_mode)
+			b.lastChild.disabled = "disabled";
 		addInputCheck(b.lastChild, /^[^\x00-\x1F\x80-\x9F]{3,30}$/, "SSID ist ung\xfcltig.");
 		break;
 	case "macaddr":
@@ -140,7 +147,7 @@ function getNetMode(ifname)
 	if(config_find(n, {"ifname" : ifname, "proto" : "batadv"}))
 		return "mesh";
 
-	return mode;
+	return "none";
 }
 
 function getWifiMode(id)
@@ -177,9 +184,9 @@ function rebuild_assignment()
 	hide(root);
 
 	var fs = append_section(root, "Anschl\xfcsse");
-	addHelpText(fs, "Die Anschl\xfcsse am Router zusammengefasst zu verschiedenen virtuellen Anschl\xfcssen.");
+	addHelpText(fs, "Einzelne Anschl\xfcsse des Router die nicht als Teil des Switches oder WLANS zu identifizieren sind.");
 
-	var ignore = ["fastd_mesh", "bat0", "local-node", "lo"];
+	var ignore = ["fastd_mesh", "bat0", "lo"];
 	var ifnames = [];
 
 	//collect all interfaces
@@ -226,8 +233,13 @@ function collect_wifi_info(device)
 	return {"modes" : modes};
 }
 
-function capitalise(string) {
-	return string.charAt(0).toUpperCase() + string.slice(1);
+function modeName(mode) {
+	for(var i in net_options) {
+		if(net_options[i][1] == mode) {
+			return net_options[i][0];
+		}
+	}
+	return mode;
 }
 
 function addNetSection(ifname, mode)
@@ -264,6 +276,7 @@ function delNetSection(ifname)
 			delete n[id];
 	});
 
+	n.wan.ifname = removeItem(n.wan.ifname, ifname);
 	n.lan.ifname = removeItem(n.lan.ifname, ifname);
 	n.freifunk.ifname = removeItem(n.freifunk.ifname, ifname);
 
@@ -304,7 +317,7 @@ function addWifiSection(device, mode)
 		n.pchanged = true;
 		break;
 	case "freifunk":
-		w[id] = {"device":device,"stype":"wifi-iface","mode":"ap","ssid":s.default_ap_ssid,"network":"freifunk"};
+		w[id] = {"device":device,"stype":"wifi-iface","mode":"ap","ssid":(s.community+".freifunk.net"),"network":"freifunk"};
 		break;
 	case "lan":
 		w[id] = {"device":device,"stype":"wifi-iface","mode":"ap","ssid":"MyNetwork","key":randomString(10),"encryption":"psk2","network":"lan"};
@@ -358,7 +371,7 @@ function rebuild_wifi()
 			if(wobj.device != dev) return;
 
 			var mode = getWifiMode(wid);
-			var title = (mode == "none") ? "'"+wobj.network+"'" : capitalise(mode);
+			var title = (mode == "none") ? "'"+wobj.network+"'" : modeName(mode);
 			var entry = append_section(parent, title, "wireless_"+dev+"_"+mode);
 
 			for(var opt in wobj)
@@ -519,6 +532,7 @@ function collect_switch_info(device)
 			obj.port_map = [['_',0], ['1',1], ['2',2], ['3',3], ['4',4]];
 			break;
 		case 'tp-link-tl-wr841n-nd-v9':
+		case 'tp-link-tl-mr3420-v1':
 			obj.port_map = [['_',0], ['1',4], ['2',3], ['3',2], ['4',1]];
 			break;
 		case 'tp-link-cpe210-v1-0':
@@ -658,8 +672,10 @@ function rebuild_switches()
 			if(vobj.device != swinfo.device) return;
 			var ifname = guess_vlan_ifname(swinfo, vobj.vlan, vlans.length);
 			var mode = getNetMode(ifname);
-			delNetSection(ifname);
-			addNetSection(ifname, mode); //makes sure entry exists
+			if(mode != "none") {
+				delNetSection(ifname);
+				addNetSection(ifname, mode); //makes sure entry exists
+			}
 			build_vlan(switch_root, vid, vobj, swinfo, ifname, mode);
 		});
 

@@ -14,10 +14,10 @@ define Package/freifunk-bielefeld-basic
 	DEFAULT:=y
 	TITLE:= Freifunk-Bielefeld Basic
 	URL:=http://freifunk-bielefeld.de
-	DEPENDS:=+kmod-batman-adv +batctl +alfred +sockread\
+	DEPENDS:=+kmod-batman-adv +alfred +sockread\
 		+uhttpd +haserl +uhttpd-mod-tls +px5g \
-		+fastd +ip +odhcpd +dnsmasq-dhcpv6 \
-		+ebtables +kmod-ebtables-ipv4 +kmod-ebtables-ipv6 \
+		+fastd +ip +odhcpd +simple-radvd \
+		+ebtables +kmod-ebtables-ipv6 \
 		+haveged +autoupdater +simple-tc +@ATH_USER_REGD
 endef
 
@@ -32,8 +32,8 @@ define Package/freifunk-bielefeld-basic/install
 	echo "*/5 * * * * /usr/sbin/print_map.sh -p" >> $(1)/lib/cron/${PKG_NAME}
 	echo "#publish service data" >> $(1)/lib/cron/${PKG_NAME}
 	echo "*/5 * * * * /usr/sbin/print_service.sh -p" >> $(1)/lib/cron/${PKG_NAME}
-	echo "#reboot every 1 days at 04:05" >> $(1)/lib/cron/${PKG_NAME}
-	echo "1 4 */5 * * /sbin/reboot" >> $(1)/lib/cron/${PKG_NAME}
+	echo "#reboot every 5 days at 04:05" >> $(1)/lib/cron/${PKG_NAME}
+	echo "5 4 */5 * * /sbin/reboot" >> $(1)/lib/cron/${PKG_NAME}
 endef
 
 define Package/freifunk-bielefeld/conffiles
