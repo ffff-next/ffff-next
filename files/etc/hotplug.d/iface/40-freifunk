@@ -1,15 +1,15 @@
 #!/bin/sh
 
-[ "$INTERFACE" = "freifunk6" ] || exit
+[ "$INTERFACE" = "public6" ] || exit
   
 . /lib/functions/network.sh
 
 dnsservers=""
-network_get_dnsserver dnsservers freifunk6 true
+network_get_dnsserver dnsservers public6 true
 
-echo > /tmp/resolv.conf.freifunk.auto
+echo > /tmp/resolv.conf.public.auto
 for dnsserver in $dnsservers; do
 	if [ "$(ip a | grep -c $dnsserver)" = "0" ]; then
-		echo "nameserver $dnsserver" >> /tmp/resolv.conf.freifunk.auto
+		echo "nameserver $dnsserver" >> /tmp/resolv.conf.public.auto
 	fi
 done

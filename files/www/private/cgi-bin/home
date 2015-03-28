@@ -18,7 +18,7 @@ print() {
 
 printList() {
 	for item in $2; do
-		echo "	list $1 '$item'"
+		echo "  list $1 '$item'"
 	done
 }
 
@@ -27,11 +27,11 @@ printList() {
 
 echo "package misc"
 echo "config data 'data'"
-print 'mac' "$(uci -q get network.freifunk.macaddr)"
-printList 'freifunk_addr4' "$(addr 4 br-freifunk)"
-printList 'freifunk_addr6' "$(addr 6 br-freifunk)"
-printList 'lan_addr4' "$(addr 4 br-lan)"
-printList 'lan_addr6' "$(addr 6 br-lan)"
+print 'mac' "$(uci -q get network.public.macaddr)"
+printList 'public_addr4' "$(addr 4 br-public)"
+printList 'public_addr6' "$(addr 6 br-public)"
+printList 'private_addr4' "$(addr 4 br-private)"
+printList 'private_addr6' "$(addr 6 br-private)"
 printList 'wan_addr4' "$(addr 4 br-wan)"
 printList 'wan_addr6' "$(addr 6 br-wan)"
 
@@ -42,7 +42,8 @@ print 'uptime' "${uptime##*up}"
 print 'uname' "$(uname -s -m -r)"
 print 'date' "$(date)"
 
-if [ $(sockread /var/run/fastd.status 2> /dev/null | grep  -c '"connection": {') -gt 0 ]; then
+kill -s SIGUSR1 $(cat /var/run/fastd.default.pid)
+if [ -n "$(logread -l 5 | awk '/fastd/ && /peer/ && /connected/')" ]; then
 	print 'has_vpn' 'Ja'
 else
 	print 'has_vpn' 'Nein'
@@ -63,12 +64,12 @@ print 'openwrt_version' "$DISTRIB_DESCRIPTION"
 name="$(uci get -q freifunk.@settings[0].name)"
 print 'name' "${name:--}"
 print 'model' "$(cat /tmp/sysinfo/model 2> /dev/null)"
-print 'freifunk_user_count' "$(batctl tl 2> /dev/null | grep -c 'W')"
-print 'lan_user_count' "$(cat /tmp/dhcp.lan.leases 2> /dev/null | sed '/^[0-9][0-9]* .* 192/!d' | wc -l)"
-print 'lan_rx_bytes' "$(cat /sys/class/net/br-lan/statistics/rx_bytes 2> /dev/null)"
-print 'lan_tx_bytes' "$(cat /sys/class/net/br-lan/statistics/tx_bytes 2> /dev/null)"
-print 'freifunk_rx_bytes' "$(cat /sys/class/net/br-freifunk/statistics/rx_bytes 2> /dev/null)"
-print 'freifunk_tx_bytes' "$(cat /sys/class/net/br-freifunk/statistics/tx_bytes 2> /dev/null)"
+print 'public_user_count' "$(batctl tl 2> /dev/null | grep -c 'W')"
+print 'private_user_count' "$(cat /tmp/dhcp.leases 2> /dev/null | sed '/^[0-9][0-9]* .* 192/!d' | wc -l)"
+print 'private_rx_bytes' "$(cat /sys/class/net/br-private/statistics/rx_bytes 2> /dev/null)"
+print 'private_tx_bytes' "$(cat /sys/class/net/br-private/statistics/tx_bytes 2> /dev/null)"
+print 'public_rx_bytes' "$(cat /sys/class/net/br-public/statistics/rx_bytes 2> /dev/null)"
+print 'public_tx_bytes' "$(cat /sys/class/net/br-public/statistics/tx_bytes 2> /dev/null)"
 print 'wan_rx_bytes' "$(cat /sys/class/net/br-wan/statistics/rx_bytes 2> /dev/null)"
 print 'wan_tx_bytes' "$(cat /sys/class/net/br-wan/statistics/tx_bytes 2> /dev/null)"
 

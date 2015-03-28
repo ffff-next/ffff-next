@@ -1,5 +1,5 @@
 
-config dnsmasq lan
+config dnsmasq private
 	option domainneeded '1'
 	option boguspriv '1'
 	option filterwin2k '0'
@@ -10,14 +10,14 @@ config dnsmasq lan
 	option nonegcache '0'
 	option authoritative '1'
 	option readethers '1'
-	option leasefile '/tmp/dhcp.lan.leases'
+	option leasefile '/tmp/dhcp.private.leases'
 	option resolvfile '/tmp/resolv.conf.auto'
 	option add_local_domain '0'
 	option add_local_hostname '0'
 	option bind_dynamic '1'
-	list interface 'br-lan'
+	list interface 'br-private'
 
-config dnsmasq freifunk
+config dnsmasq public
 	option domainneeded '1'
 	option boguspriv '1'
 	option filterwin2k '0'
@@ -28,12 +28,12 @@ config dnsmasq freifunk
 	option nonegcache '0'
 	option authoritative '1'
 	option readethers '1'
-	option leasefile '/tmp/dhcp.freifunk.leases'
-	option resolvfile '/tmp/resolv.conf.freifunk.auto'
+	option leasefile '/tmp/dhcp.public.leases'
+	option resolvfile '/tmp/resolv.conf.public.auto'
 	option add_local_domain '0'
 	option add_local_hostname '0'
 	option bind_dynamic '1'
-	list interface 'br-freifunk'
+	list interface 'br-public'
 	list notinterface 'lo'
 
 config odhcpd 'odhcpd'
@@ -42,7 +42,7 @@ config odhcpd 'odhcpd'
 	option leasetrigger '/usr/sbin/odhcpd-update'
 
 config dhcp
-	option interface lan
+	option interface private
 	option start 100
 	option limit 150
 	option leasetime 2h
@@ -50,10 +50,10 @@ config dhcp
 	list dhcp_option '6,192.168.133.1'
 	option ra relay
 	option ndp relay
-	option dnsmasq_config lan
+	option dnsmasq_config private
 
 config dhcp
-	option interface freifunk
+	option interface public
 	option start 100
 	option limit 150
 	option leasetime 2h
@@ -62,7 +62,7 @@ config dhcp
 	option ra relay
 	option ndp relay
 	option master 1
-	option dnsmasq_config freifunk
+	option dnsmasq_config public
 
 config dhcp wan
 	option interface wan

@@ -1,7 +1,7 @@
 
-config uhttpd freifunk
+config uhttpd public
 	list listen_http 80
-	option home /www/freifunk
+	option home /www/public
 	option rfc1918_filter 1
 	option cgi_prefix /cgi-bin
 	option script_timeout 60
@@ -9,9 +9,9 @@ config uhttpd freifunk
 	option tcp_keepalive 1
 	option config "_"
 
-config uhttpd lan
+config uhttpd private
 	list listen_https 443
-	option home /www/lan
+	option home /www/private
 	option rfc1918_filter 1
 	option cert /etc/uhttpd.crt
 	option key /etc/uhttpd.key

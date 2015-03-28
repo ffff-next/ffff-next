@@ -66,7 +66,7 @@ function appendSetting(p, path, value, mode)
 	case "enabled":
 		if(cfg == "autoupdater") {
 			b = append_radio(p, "Autoupdater", id, value, [["An", "1"], ["Aus", "0"]]);
-			addHelpText(b, "Der Autoupdater aktualisiert die Firmware automatisch auf die neuste Version.");
+			addHelpText(b, "Der Autoupdater aktualisiert die Firmware automatisch auf die neuste Version. Dabei werden allerdings alle Einstellungen <b>zur\xfcckgesetzt</b>.");
 		}
 		if(cfg == "simple-tc") {
 			b = append_radio(p, "Bandweitenkontrolle", id, value, [["An", "1"], ["Aus", "0"]]);
@@ -78,17 +78,17 @@ function appendSetting(p, path, value, mode)
 		addHelpText(b, "Soll dieser Knoten auf der Knotenkarte angezeigt werden?");
 		break;
 	case "limit_egress":
-		b = append_input(p, "Freifunk Upload", id, value);
+		b = append_input(p, "Public Upload", id, value);
 		addInputCheck(b.lastChild, /^\d+$/, "Upload ist ung\xfcltig.");
 		addHelpText(b, "Maximaler Upload in KBit/s f\xfcr die Bandweitenkontrolle.");
 		break;
 	case "limit_ingress":
-		b = append_input(p, "Freifunk Download", id, value);
+		b = append_input(p, "Public Download", id, value);
 		addInputCheck(b.lastChild, /^\d+$/, "Download ist ung\xfcltig.");
 		addHelpText(b, "Maximaler Download in KBit/s f\xfcr die Bandweitenkontrolle.");
 		break;
 	case "access_from":
-		b = append_check(p, "SSH/HTTPS Zugriff", id, split(value), [["WAN","wan"], ["LAN","lan"], ["Freifunk","freifunk"]]);
+		b = append_check(p, "SSH/HTTPS Zugriff", id, split(value), [["WAN","wan"], ["Private","private"], ["Public","public"]]);
 		addHelpText(b, "Zugang zur Konfiguration \xfcber verschiedene Anschl\xfcsse/Netzwerke erm\xf6glichen.")
 		break;
 	case "service_link":

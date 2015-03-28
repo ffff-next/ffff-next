@@ -29,8 +29,8 @@ endef
 define Package/freifunk-franken-basic/install
 	$(CP) ./files/* $(1)/
 	mkdir -p $(1)/lib/cron
-	echo "#reboot every 1 days at 04:05" >> $(1)/lib/cron/$(PKG_NAME)
-	echo "1 4 */5 * * /sbin/reboot" >> $(1)/lib/cron/$(PKG_NAME)
+	echo "#reboot every 5 days at 04:05" >> $(1)/lib/cron/$(PKG_NAME)
+	echo "5 4 */5 * * /sbin/reboot" >> $(1)/lib/cron/$(PKG_NAME)
 endef
 
 define Package/freifunk-franken/conffiles
