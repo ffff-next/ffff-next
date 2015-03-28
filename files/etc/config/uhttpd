@@ -1,7 +1,7 @@
 
-config uhttpd public
+config uhttpd freifunk
 	list listen_http 80
-	option home /www/public
+	option home /www/freifunk
 	option rfc1918_filter 1
 	option cgi_prefix /cgi-bin
 	option script_timeout 60
@@ -9,9 +9,9 @@ config uhttpd public
 	option tcp_keepalive 1
 	option config "_"
 
-config uhttpd private
+config uhttpd lan
 	list listen_https 443
-	option home /www/private
+	option home /www/lan
 	option rfc1918_filter 1
 	option cert /etc/uhttpd.crt
 	option key /etc/uhttpd.key
@@ -26,15 +26,10 @@ config uhttpd private
 config cert px5g
 
 	# Validity time
-	option days 730
+	option days 1400
 
 	# RSA key size
-	option bits 1024
-
-	# Location
-	option country DE
-	option state NRW
-	option location Bielefeld
+	option bits 2048
 
 	# Common name
 	option commonname OpenWrt

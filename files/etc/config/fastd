@@ -1,16 +1,20 @@
 
 config fastd 'default'
 	option enabled 1
-	option syslog_level 'info'
+	option syslog_level 'warn'
 	list bind 'any interface "br-wan"'
-	list method 'salsa2012+gmac'
+	list method 'salsa2012+umac'
 	option secure_handshakes 1
+	option hide_ip_addresses '1'
+	option hide_mac_addresses '1'
+	option status_socket '/var/run/fastd.status'
 	option mode 'tap'
 	option interface 'fastd_mesh'
 	option mtu 1406
 	option forward 0
 	option secret '' #set by /etc/init.d/freifunk_setup
 	option key '' #set by /etc/init.d/freifunk_setup
+	option packet_mark 1
 
 config peer_group 'backbone'
 	option enabled '1'
@@ -71,4 +75,12 @@ config peer 'vpn1_owl'
 	option group 'backbone'
 	option key 'b6d51c7f80704d9a3f5b3ec8b7727757fdf85961a8bf0bc1d058419083b64a33'
 	list remote '"vpn1.freifunk-owl.de" port 1244'
+	option float 0
+	
+config peer 'vpn1_badsalzuflen'
+	option enabled 1
+	option net 'default'
+	option group 'backbone'
+	option key '9d9bbeb26813afde58681eb3102329657e08003496e8429bfc367047edb59e44'
+	list remote '"vpn1.freifunk-bad-salzuflen.de" port 1244'
 	option float 0
